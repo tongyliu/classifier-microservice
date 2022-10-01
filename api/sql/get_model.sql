@@ -1,1 +1,1 @@
-SELECT * FROM models WHERE model_id = %s;
+SELECT * FROM models WHERE id = %s;

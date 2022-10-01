@@ -7,16 +7,16 @@ from db import DatabaseManager
 application = Flask(__name__)
 dbm = DatabaseManager()
 
-# Creates tables if they don't already exist
-dbm.setup_tables()
+# For testing purposes -- drop existing tables on startup
+dbm.setup_tables(drop_existing=True)
 
 
-@application.route('/health', methods=['GET'])
+@application.route('/health/', methods=['GET'])
 def health():
-    return {'message': 'Ok'}
+    return {'status': 'ok'}
 
 
-@application.route('/models', methods=['POST'])
+@application.route('/models/', methods=['POST'])
 def create_model():
     """Create an untrained classifier model."""
     try:
@@ -25,7 +25,7 @@ def create_model():
         return e.to_response()
 
 
-@application.route('/models/<model_id>', methods=['GET'])
+@application.route('/models/<model_id>/', methods=['GET'])
 def get_model(model_id: int):
     """Get a trained or untrained model, identified by its id."""
     try:
@@ -34,7 +34,7 @@ def get_model(model_id: int):
         return e.to_response()
 
 
-@application.route('/models/<model_id>/train', methods=['POST'])
+@application.route('/models/<model_id>/train/', methods=['POST'])
 def train_model(model_id: int):
     """Do one step of partial training of a model."""
     try:
@@ -43,7 +43,7 @@ def train_model(model_id: int):
         return e.to_response()
 
 
-@application.route('/models/<model_id>/predict', methods=['GET'])
+@application.route('/models/<model_id>/predict/', methods=['GET'])
 def predict(model_id: int):
     """Get a features vector and a model and use it to predict."""
     try:
@@ -52,7 +52,7 @@ def predict(model_id: int):
         return e.to_response()
 
 
-@application.route('/models', methods=['GET'])
+@application.route('/models/', methods=['GET'])
 def get_models():
     """Get model training statistics."""
     try:

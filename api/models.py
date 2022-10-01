@@ -24,7 +24,7 @@ def run_train_step(
     expected_n = model_data['n_classes']
 
     if len(X) != expected_dim:
-        raise ValueError(f'Expected X to be dimension {expected_dim}')
+        raise ValueError(f'Expected X to be dimension {expected_dim}, got {len(X)}')
 
     if y >= expected_n:
         raise ValueError(f'Expected y to be in range [0, {expected_n})')
@@ -42,7 +42,8 @@ def run_predict(
     expected_dim = model_data['d']
 
     if len(X) != expected_dim:
-        raise ValueError(f'Expected X to be dimension {expected_dim}')
+        raise ValueError(f'Expected X to be dimension {expected_dim}, got {len(X)}')
 
     X = np.array([X])
-    return int(model.predict(X)[0])
+    predictions = model.predict(X)
+    return int(predictions.item())

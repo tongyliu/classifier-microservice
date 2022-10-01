@@ -1,7 +1,11 @@
 import base64
+from locale import normalize
+from logging import Handler
 import pickle
 import json
 from typing import Any, Dict, Tuple, Type, Union
+
+import numpy as np
 
 from db import DatabaseManager
 from models import MODEL_CLASSES, run_predict, run_train_step
@@ -41,7 +45,7 @@ def create_model(dbm: DatabaseManager, body: Dict[str, Any]) -> ResponseType:
     model_pkl = pickle.dumps(model)
     params = json.dumps(body['params'])
     model_id = dbm.create_model(body['model'], params, body['d'], body['n_classes'], model_pkl)
-    return {"model_id": model_id}
+    return {'id': model_id}
 
 
 def get_model(dbm: DatabaseManager, model_id: int) -> ResponseType:
@@ -56,22 +60,26 @@ def get_model(dbm: DatabaseManager, model_id: int) -> ResponseType:
     return model_data
 
 
-def train_model(dbm: DatabaseManager, model_id: str, body: Dict[str, any]) -> ResponseType:
-    model_id = int(model_id)
-    _validate_params({'X': list, 'y': int}, body)
+def train_model(dbm: DatabaseManager, model_id: int, body: Dict[str, any]) -> ResponseType:
+    _validate_params({'x': list, 'y': int}, body)
     model_data = dbm.get_model(model_id)
 
     if not model_data:
         raise HandlerError(f'Model with id {model_id} not found', 404)
 
     model = pickle.loads(model_data.pop('model_pkl'))
-    run_train_step(model, model_data, body['X'], body['y'])
+
+    try:
+        run_train_step(model, model_data, body['x'], body['y'])
+    except ValueError as e:
+        raise HandlerError(str(e))
+
     updated_pkl = pickle.dumps(model)
 
     n_trained = model_data['n_trained'] + 1
     dbm.update_model(model_id, updated_pkl, n_trained)
 
-    return {'n_trained': n_trained}
+    return {'id': model_data['id'], 'n_trained': n_trained}
 
 
 
@@ -85,15 +93,44 @@ def predict(dbm: DatabaseManager, model_id: int, args: Dict[str, any]) -> Respon
     x_str = base64.b64decode(args['x'])
 
     try:
-        X = json.loads(x_str)
+        x = json.loads(x_str)
+        print('got this for x', x)
     except json.JSONDecodeError:
         raise HandlerError(f'Expected x to be a valid JSON array')
 
     model = pickle.loads(model_data.pop('model_pkl'))
-    prediction = run_predict(model, model_data, X)
 
-    return {'X': X, 'y': prediction}
+    try:
+        prediction = run_predict(model, model_data, x)
+    except ValueError as e:
+        raise HandlerError(str(e))
+
+    return {'id': model_data['id'], 'x': x, 'y': prediction}
 
 
 def get_models(dbm: DatabaseManager) -> ResponseType:
-    return {"models": []}
+    models = dbm.get_models()
+
+    types = np.array([x['model'] for x in models])
+    n_trained = np.array([x['n_trained'] for x in models])
+    unique_types = set(types)
+    normalized_n_trained = {}
+
+    # Get unique n_trained counts for each model type
+    # Then map to normalized scores
+    for model_type in unique_types:
+        unique_n_trained = np.unique(n_trained[types == model_type])
+
+        if len(unique_n_trained) == 1:
+            distribution = [1.0]
+        else:
+            distribution = np.linspace(0, 1, len(unique_n_trained))
+
+        normalized_n_trained[model_type] = {
+            k: v for k, v in zip(unique_n_trained, distribution)
+        }
+
+    for model in models:
+        model['training_score'] = normalized_n_trained[model['model']][model['n_trained']]
+
+    return {'models': models}

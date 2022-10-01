@@ -1,7 +1,7 @@
 import base64
 import os
 import pathlib
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import MySQLdb
 
@@ -67,6 +67,19 @@ class DatabaseManager:
         cursor.execute(self._queries['update_model'], (model_pkl, n_trained, model_id))
         cursor.close()
         self._conn.commit()
+
+    def get_models(self) -> List[Dict[str, Any]]:
+        cursor = self._conn.cursor()
+        cursor.execute(self._queries['get_models'])
+        rows = cursor.fetchall()
+        cursor.close()
+        
+        models = [
+            {k[0]: v for k, v in zip(cursor.description, row)}
+            for row in rows
+        ]
+
+        return models
 
     def _load_queries(self):
         # Read queries into memory so we don't need to repeat filesystem access
