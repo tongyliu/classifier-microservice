@@ -18,15 +18,15 @@ class DatabaseManager:
     def __init__(self):
         self._conn = _connect()
         self._load_queries()
-    
+
     def setup_tables(self, drop_existing: bool = False) -> None:
         cursor = self._conn.cursor()
 
         if drop_existing:
             cursor.execute(self._queries['drop_tables'])
-        
+
         cursor.execute(self._queries['create_tables'])
-    
+
     def create_model(
         self,
         model: str,
@@ -48,19 +48,26 @@ class DatabaseManager:
 
     def get_model(self, model_id: int) -> Optional[Dict[str, Any]]:
         cursor = self._conn.cursor()
-        cursor.execute(self._queries['get_model'], (model_id))
+        cursor.execute(self._queries['get_model'], (model_id,))
         row = cursor.fetchone()
         cursor.close()
 
-        if not row: 
+        if not row:
             return None
 
         values_dict = {k[0]: v for k, v in zip(cursor.description, row)}
-        print(values_dict)
         values_dict["model_pkl"] = base64.b64decode(values_dict["model_pkl"])
 
         return values_dict
-        
+
+    def update_model(self, model_id: int, model_pkl: bytes, n_trained: int) -> None:
+        model_pkl = base64.b64encode(model_pkl)
+
+        cursor = self._conn.cursor()
+        cursor.execute(self._queries['update_model'], (model_pkl, n_trained, model_id))
+        cursor.close()
+        self._conn.commit()
+
     def _load_queries(self):
         # Read queries into memory so we don't need to repeat filesystem access
         self._queries = {}

@@ -47,7 +47,7 @@ def train_model(model_id: int):
 def predict(model_id: int):
     """Get a features vector and a model and use it to predict."""
     try:
-        return handlers.train_model(dbm, model_id, request.args)
+        return handlers.predict(dbm, model_id, request.args)
     except handlers.HandlerError as e:
         return e.to_response()
 
