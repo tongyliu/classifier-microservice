@@ -1,2 +1,4 @@
-mysqlclient
 flask==2.2.2
+mysqlclient
+numpy
+scikit-learn=1.1.2
