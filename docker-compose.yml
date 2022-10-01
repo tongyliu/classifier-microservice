@@ -19,6 +19,10 @@ services:
         read_only: true
     entrypoint: uwsgi --ini /api/uwsgi.ini
 
+    # Expose the API server on localhost for easier debugging
+    ports:
+      - 8888:8888
+
   client:
     build: client
     depends_on:
