@@ -1,5 +1,7 @@
+import base64
 import os
 import pathlib
+from typing import Any, Dict, Optional
 
 import MySQLdb
 
@@ -24,11 +26,45 @@ class DatabaseManager:
             cursor.execute(self._queries['drop_tables'])
         
         cursor.execute(self._queries['create_tables'])
+    
+    def create_model(
+        self,
+        model: str,
+        params: str,
+        d: int,
+        n_classes: int,
+        model_pkl: bytes,
+    ) -> int:
+        model_pkl = base64.b64encode(model_pkl)
+
+        cursor = self._conn.cursor()
+        cursor.execute(self._queries['create_model'], (model, params, d, n_classes, model_pkl))
+        cursor.execute(self._queries['get_insert_id'])
+        new_id = cursor.fetchone()[0]
+        cursor.close()
+        self._conn.commit()
+
+        return int(new_id)
+
+    def get_model(self, model_id: int) -> Optional[Dict[str, Any]]:
+        cursor = self._conn.cursor()
+        cursor.execute(self._queries['get_model'], (model_id))
+        row = cursor.fetchone()
+        cursor.close()
+
+        if not row: 
+            return None
+
+        values_dict = {k[0]: v for k, v in zip(cursor.description, row)}
+        print(values_dict)
+        values_dict["model_pkl"] = base64.b64decode(values_dict["model_pkl"])
+
+        return values_dict
         
     def _load_queries(self):
         # Read queries into memory so we don't need to repeat filesystem access
         self._queries = {}
-        query_dir = pathlib.Path("./sql")
+        query_dir = pathlib.Path('./sql')
 
         for query_file in query_dir.iterdir():
             with open(query_file) as f:
