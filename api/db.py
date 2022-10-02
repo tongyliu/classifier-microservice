@@ -39,7 +39,12 @@ class DatabaseManager:
 
         cursor = self._conn.cursor()
         cursor.execute(self._queries['create_model'], (model, params, d, n_classes, model_pkl))
+
+        # LAST_INSERT_ID() is connection scoped, so to be safe we could have
+        # this method use a new connection each time rather than sharing the
+        # global one. Not a huge deal in this simulated scenario though.
         cursor.execute(self._queries['get_insert_id'])
+
         new_id = cursor.fetchone()[0]
         cursor.close()
         self._conn.commit()

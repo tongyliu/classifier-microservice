@@ -1,6 +1,4 @@
 import base64
-from locale import normalize
-from logging import Handler
 import pickle
 import json
 from typing import Any, Dict, Tuple, Type, Union
@@ -61,6 +59,10 @@ def get_model(dbm: DatabaseManager, model_id: int) -> ResponseType:
 
 
 def train_model(dbm: DatabaseManager, model_id: int, body: Dict[str, any]) -> ResponseType:
+    # Note that this isn't safe if there are concurrent callers for the same model.
+    # In practice if there are enough concurrent updates for this to be a concern
+    # we'd want to batch the updates in a queue e.g. Kafka and have this operate
+    # over mini-batches instead of single examples.
     _validate_params({'x': list, 'y': int}, body)
     model_data = dbm.get_model(model_id)
 
@@ -82,7 +84,6 @@ def train_model(dbm: DatabaseManager, model_id: int, body: Dict[str, any]) -> Re
     return {'id': model_data['id'], 'n_trained': n_trained}
 
 
-
 def predict(dbm: DatabaseManager, model_id: int, args: Dict[str, any]) -> ResponseType:
     _validate_params({'x': str}, args)
     model_data = dbm.get_model(model_id)
@@ -94,7 +95,6 @@ def predict(dbm: DatabaseManager, model_id: int, args: Dict[str, any]) -> Respon
 
     try:
         x = json.loads(x_str)
-        print('got this for x', x)
     except json.JSONDecodeError:
         raise HandlerError(f'Expected x to be a valid JSON array')
 
